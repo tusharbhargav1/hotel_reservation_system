@@ -1,0 +1,223 @@
+```html
+{% extends "base.html" %}
+
+{% block title %}
+Guest Check-Out
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Guest Check-Out</h1>
+
+<hr>
+
+
+
+<!-- FLASH MESSAGES -->
+
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+
+    {% if messages %}
+
+        {% for category, message in messages %}
+
+            <div
+                style="
+                    padding: 10px;
+                    margin-bottom: 15px;
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                "
+            >
+
+                {{ message }}
+
+            </div>
+
+        {% endfor %}
+
+    {% endif %}
+
+{% endwith %}
+
+
+{% if bookings %}
+
+    {% for booking in bookings %}
+
+        <div
+            style="
+                border: 1px solid #ccc;
+                padding: 20px;
+                margin-bottom: 20px;
+                border-radius: 8px;
+            "
+        >
+
+            <h2>
+                Booking #{{ booking.id }}
+            </h2>
+
+
+            <p>
+
+                <strong>
+                    Guest:
+                </strong>
+
+                {{ booking.user.name }}
+
+            </p>
+
+
+            <p>
+
+                <strong>
+                    Email:
+                </strong>
+
+                {{ booking.user.email }}
+
+            </p>
+
+
+            <p>
+
+                <strong>
+                    Hotel:
+                </strong>
+
+                {{ booking.room.hotel.name }}
+
+            </p>
+
+
+            <p>
+
+                <strong>
+                    City:
+                </strong>
+
+                {{ booking.room.hotel.city }}
+
+            </p>
+
+
+            <p>
+
+                <strong>
+                    Room:
+                </strong>
+
+                {{ booking.room.room_number }}
+
+            </p>
+
+
+            <p>
+
+                <strong>
+                    Room Type:
+                </strong>
+
+                {{ booking.room.room_type }}
+
+            </p>
+
+
+            <p>
+
+                <strong>
+                    Check-In:
+                </strong>
+
+                {{ booking.check_in_date }}
+
+            </p>
+
+
+            <p>
+
+                <strong>
+                    Check-Out:
+                </strong>
+
+                {{ booking.check_out_date }}
+
+            </p>
+
+
+            <p>
+
+                <strong>
+                    Number of Guests:
+                </strong>
+
+                {{ booking.guests }}
+
+            </p>
+
+
+            <form
+                method="POST"
+                action="{{ url_for('staff.checkout') }}"
+            >
+
+                <input
+                    type="hidden"
+                    name="booking_id"
+                    value="{{ booking.id }}"
+                >
+
+
+                <button
+                    type="submit"
+                    style="
+                        padding: 10px 20px;
+                        cursor: pointer;
+                    "
+                >
+
+                    Confirm Check-Out
+
+                </button>
+
+            </form>
+
+        </div>
+
+    {% endfor %}
+
+{% else %}
+
+    <p>
+        There are no guests currently checked in.
+    </p>
+
+{% endif %}
+
+
+<hr>
+
+
+<p>
+
+    <a href="{{ url_for('staff.dashboard') }}">
+        Back to Dashboard
+    </a>
+
+</p>
+
+
+<p>
+
+    <a href="{{ url_for('staff.bookings') }}">
+        View All Bookings
+    </a>
+
+</p>
+
+{% endblock %}
+```

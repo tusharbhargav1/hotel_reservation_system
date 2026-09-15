@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}
+Add Room
+{% endblock %}
+
+{% block content %}
+
+<h1>Add New Room</h1>
+
+<form method="POST">
+
+    <label>
+        Select Hotel
+    </label>
+
+    <select
+        name="hotel_id"
+        required
+        style="
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        "
+    >
+
+        <option value="">
+            -- Select Hotel --
+        </option>
+
+        {% for hotel in hotels %}
+
+            <option value="{{ hotel.id }}">
+
+                {{ hotel.name }}
+                - {{ hotel.city }}
+
+            </option>
+
+        {% endfor %}
+
+    </select>
+
+
+    <label>
+        Room Number
+    </label>
+
+    <input
+        type="text"
+        name="room_number"
+        placeholder="Example: 101"
+        required
+    >
+
+
+    <label>
+        Room Type
+    </label>
+
+    <input
+        type="text"
+        name="room_type"
+        placeholder="Example: Deluxe"
+        required
+    >
+
+
+    <label>
+        Price Per Night
+    </label>
+
+    <input
+        type="number"
+        name="price_per_night"
+        step="0.01"
+        min="0"
+        required
+    >
+
+
+    <label>
+        Capacity
+    </label>
+
+    <input
+        type="number"
+        name="capacity"
+        min="1"
+        required
+    >
+
+
+    <button type="submit">
+        Add Room
+    </button>
+
+</form>
+
+<br>
+
+<a href="{{ url_for('room.rooms') }}">
+    Back to Rooms
+</a>
+
+{% endblock %}

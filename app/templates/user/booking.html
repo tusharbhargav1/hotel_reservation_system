@@ -1,0 +1,201 @@
+
+{% extends "base.html" %}
+
+{% block title %}
+Confirm Booking
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container">
+
+    <div class="section-title">
+
+        <h2>
+            Confirm Your Booking
+        </h2>
+
+        <p>
+            Review your reservation details
+        </p>
+
+    </div>
+
+
+    <div class="card-grid">
+
+
+              <!-- ROOM DETAILS -->
+ 
+        <div class="card">
+
+            <div class="card-image">
+                🏨
+            </div>
+
+
+            <div class="card-content">
+
+                <h3>
+                    {{ room.hotel.name }}
+                </h3>
+
+
+                <p>
+
+                    📍
+
+                    {{ room.hotel.city }}
+
+                </p>
+
+
+                <p>
+
+                    <strong>
+                        Room:
+                    </strong>
+
+                    {{ room.room_number }}
+
+                </p>
+
+
+                <p>
+
+                    <strong>
+                        Type:
+                    </strong>
+
+                    {{ room.room_type }}
+
+                </p>
+
+
+                <p>
+
+                    <strong>
+                        Price:
+                    </strong>
+
+                    ₹{{ room.price_per_night }}
+                    / night
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+              <!-- BOOKING DETAILS -->
+ 
+        <div class="card">
+
+            <div class="card-content">
+
+                <h3>
+                    Booking Details
+                </h3>
+
+
+                <p>
+
+                    <strong>
+                        Check-In:
+                    </strong>
+
+                    {{ check_in }}
+
+                </p>
+
+
+                <p>
+
+                    <strong>
+                        Check-Out:
+                    </strong>
+
+                    {{ check_out }}
+
+                </p>
+
+
+                <p>
+
+                    <strong>
+                        Guests:
+                    </strong>
+
+                    {{ guests }}
+
+                </p>
+
+
+                <br>
+
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'user.book_room',
+                        room_id=room.id
+                    ) }}"
+                >
+
+                    <input
+                        type="hidden"
+                        name="check_in"
+                        value="{{ check_in }}"
+                    >
+
+
+                    <input
+                        type="hidden"
+                        name="check_out"
+                        value="{{ check_out }}"
+                    >
+
+
+                    <input
+                        type="hidden"
+                        name="guests"
+                        value="{{ guests }}"
+                    >
+
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+
+                        Confirm Booking
+
+                    </button>
+
+
+                    <a
+                        href="{{ url_for(
+                            'user.check_availability',
+                            hotel_id=room.hotel_id
+                        ) }}"
+                        class="btn btn-secondary"
+                    >
+
+                        Cancel
+
+                    </a>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+

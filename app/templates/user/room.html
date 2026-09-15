@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}
+Available Rooms
+{% endblock %}
+
+
+{% block content %}
+
+<h1>
+    Available Rooms
+</h1>
+
+
+{% if rooms %}
+
+    {% for room in rooms %}
+
+        <div
+            style="
+                border: 1px solid #ccc;
+                padding: 20px;
+                margin-bottom: 15px;
+            "
+        >
+
+            <h2>
+                Room {{ room.room_number }}
+            </h2>
+
+            <p>
+                Type:
+                {{ room.room_type }}
+            </p>
+
+            <p>
+                Price:
+                ₹{{ room.price_per_night }}
+                per night
+            </p>
+
+            <p>
+                Capacity:
+                {{ room.capacity }}
+                guests
+            </p>
+
+            <p>
+                Status:
+                {{ room.status }}
+            </p>
+
+        </div>
+
+    {% endfor %}
+
+{% else %}
+
+    <p>
+        No available rooms at the moment.
+    </p>
+
+{% endif %}
+
+
+<a href="{{ url_for('user.dashboard') }}">
+    Back to Dashboard
+</a>
+
+{% endblock %}

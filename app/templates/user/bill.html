@@ -1,0 +1,652 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Hotel Bill</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        .bill-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.10);
+        }
+
+        .hotel-header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .hotel-header h1 {
+            margin: 0;
+            font-size: 32px;
+        }
+
+        .hotel-header p {
+            margin: 8px 0 0;
+            color: #666;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section h2 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .detail-box {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .detail-box strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f1f3f5;
+        }
+
+        .amount {
+            text-align: right;
+        }
+
+        .total-row {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .payment-section {
+            margin-top: 30px;
+            padding: 25px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background-color: #fafafa;
+        }
+
+        .payment-section h2 {
+            margin-top: 0;
+        }
+
+        .payment-option {
+            display: block;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .payment-option:hover {
+            background-color: #f0f0f0;
+        }
+
+        .payment-option input {
+            margin-right: 10px;
+        }
+
+        .pay-button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 15px;
+            border: none;
+            border-radius: 8px;
+            background-color: #198754;
+            color: white;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .pay-button:hover {
+            background-color: #157347;
+        }
+
+        .paid-box {
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #d1e7dd;
+            border: 1px solid #badbcc;
+        }
+
+        .paid-box h3 {
+            color: #0f5132;
+            margin-top: 0;
+        }
+
+        .transaction {
+            margin-top: 10px;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 25px;
+        }
+
+        .print-button,
+        .back-button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 15px;
+        }
+
+        .print-button {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+        .back-button {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .flash {
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+        }
+
+        .success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .danger {
+            background-color: #f8d7da;
+            color: #842029;
+        }
+
+        .info {
+            background-color: #cff4fc;
+            color: #055160;
+        }
+
+        @media print {
+
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .bill-card {
+                box-shadow: none;
+            }
+
+            .payment-section,
+            .button-container,
+            .flash {
+                display: none;
+            }
+
+        }
+
+        @media (max-width: 600px) {
+
+            body {
+                padding: 10px;
+            }
+
+            .bill-card {
+                padding: 20px;
+            }
+
+            .details {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="bill-card">
+
+         <!-- HOTEL HEADER -->
+ 
+        <div class="hotel-header">
+
+            <h1>Grand Hotel</h1>
+
+            <p>
+                Hotel Reservation & Billing System
+            </p>
+
+            <p>
+                Jammu, India
+            </p>
+
+        </div>
+
+
+         <!-- FLASH MESSAGES -->
+ 
+        {% with messages = get_flashed_messages(
+            with_categories=true
+        ) %}
+
+            {% if messages %}
+
+                {% for category, message in messages %}
+
+                    <div class="flash {{ category }}">
+                        {{ message }}
+                    </div>
+
+                {% endfor %}
+
+            {% endif %}
+
+        {% endwith %}
+
+
+         <!-- BILL INFORMATION -->
+ 
+        <div class="section">
+
+            <h2>Bill Information</h2>
+
+            <div class="details">
+
+                <div class="detail-box">
+
+                    <strong>Booking ID</strong>
+
+                    {{ booking.id }}
+
+                </div>
+
+
+                <div class="detail-box">
+
+                    <strong>Bill ID</strong>
+
+                    {{ bill.id }}
+
+                </div>
+
+
+                <div class="detail-box">
+
+                    <strong>Guest Name</strong>
+
+                    {{ booking.user.name }}
+
+                </div>
+
+
+                <div class="detail-box">
+
+                    <strong>Email</strong>
+
+                    {{ booking.user.email }}
+
+                </div>
+
+
+                <div class="detail-box">
+
+                    <strong>Room Number</strong>
+
+                    {{ booking.room.room_number }}
+
+                </div>
+
+
+                <div class="detail-box">
+
+                    <strong>Room Type</strong>
+
+                    {{ booking.room.room_type }}
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+         <!-- STAY DETAILS -->
+ 
+        <div class="section">
+
+            <h2>Stay Details</h2>
+
+            <div class="details">
+
+                <div class="detail-box">
+
+                    <strong>Check-in Date</strong>
+
+                    {{ booking.check_in_date }}
+
+                </div>
+
+
+                <div class="detail-box">
+
+                    <strong>Check-out Date</strong>
+
+                    {{ booking.check_out_date }}
+
+                </div>
+
+
+                <div class="detail-box">
+
+                    <strong>Total Nights</strong>
+
+                    {{ nights }}
+
+                </div>
+
+
+                <div class="detail-box">
+
+                    <strong>Price Per Night</strong>
+
+                    ₹{{ booking.room.price_per_night }}
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+         <!-- BILL BREAKDOWN -->
+ 
+        <div class="section">
+
+            <h2>Bill Summary</h2>
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Description</th>
+
+                        <th class="amount">
+                            Amount
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr>
+
+                        <td>
+                            Room Charges
+                        </td>
+
+                        <td class="amount">
+                            ₹{{ bill.room_charges }}
+                        </td>
+
+                    </tr>
+
+
+                    <tr>
+
+                        <td>
+                            Tax (18%)
+                        </td>
+
+                        <td class="amount">
+                            ₹{{ bill.tax }}
+                        </td>
+
+                    </tr>
+
+
+                    <tr>
+
+                        <td>
+                            Discount
+                        </td>
+
+                        <td class="amount">
+                            ₹{{ bill.discount }}
+                        </td>
+
+                    </tr>
+
+
+                    <tr class="total-row">
+
+                        <td>
+                            Total Amount
+                        </td>
+
+                        <td class="amount">
+                            ₹{{ bill.total_amount }}
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+ 
+        <div class="payment-section">
+
+            <h2>Payment</h2>
+
+
+            {% if payment and payment.payment_status == "paid" %}
+
+ 
+                <div class="paid-box">
+
+                    <h3>
+                        ✓ Payment Completed
+                    </h3>
+
+                    <p>
+                        <strong>Amount Paid:</strong>
+                        ₹{{ payment.amount }}
+                    </p>
+
+                    <p>
+                        <strong>Payment Method:</strong>
+                        {{ payment.payment_method|upper }}
+                    </p>
+
+
+                    {% if payment.transaction_id %}
+
+                        <p class="transaction">
+
+                            <strong>
+                                Transaction ID:
+                            </strong>
+
+                            {{ payment.transaction_id }}
+
+                        </p>
+
+                    {% endif %}
+
+
+                    {% if payment.paid_at %}
+
+                        <p>
+
+                            <strong>
+                                Payment Date:
+                            </strong>
+
+                            {{ payment.paid_at }}
+
+                        </p>
+
+                    {% endif %}
+
+                </div>
+
+
+            {% else %}
+
+ 
+                <p>
+                    <strong>
+                        Select Payment Method:
+                    </strong>
+                </p>
+
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'staff.process_payment',
+                        booking_id=booking.id
+                    ) }}"
+                >
+
+                    <label class="payment-option">
+
+                        <input
+                            type="radio"
+                            name="payment_method"
+                            value="cash"
+                            required
+                        >
+
+                        💵
+                        <strong>Cash</strong>
+
+                        <br>
+
+                        <small>
+                            Pay the bill directly at the hotel reception.
+                        </small>
+
+                    </label>
+
+                    <label class="payment-option">
+
+                        <input
+                            type="radio"
+                            name="payment_method"
+                            value="upi"
+                            required
+                        >
+
+                        📱
+                        <strong>UPI</strong>
+
+                        <br>
+
+                        <small>
+                            Pay using UPI at the hotel reception.
+                        </small>
+
+                    </label>
+
+                    <button
+                        type="submit"
+                        class="pay-button"
+                    >
+                        Pay ₹{{ bill.total_amount }}
+                    </button>
+
+                </form>
+
+            {% endif %}
+
+        </div>
+
+        <div class="button-container">
+
+            <button
+                class="print-button"
+                onclick="window.print()"
+            >
+                🖨 Print Bill
+            </button>
+
+
+            <button
+                class="back-button"
+                onclick="history.back()"
+            >
+                ← Back
+            </button>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+</body>
+</html>
+

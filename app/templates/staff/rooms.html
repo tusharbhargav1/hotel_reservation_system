@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}
+Manage Rooms
+{% endblock %}
+
+{% block content %}
+
+<h1>Manage Rooms</h1>
+
+<p>
+    <a href="{{ url_for('room.add_room') }}">
+        Add New Room
+    </a>
+</p>
+
+<hr>
+
+{% if rooms %}
+
+<table
+    border="1"
+    cellpadding="10"
+    cellspacing="0"
+    width="100%"
+>
+
+    <thead>
+
+        <tr>
+
+            <th>ID</th>
+
+            <th>Hotel</th>
+
+            <th>City</th>
+
+            <th>Room</th>
+
+            <th>Type</th>
+
+            <th>Price</th>
+
+            <th>Capacity</th>
+
+            <th>Status</th>
+
+            <th>Actions</th>
+
+        </tr>
+
+    </thead>
+
+    <tbody>
+
+        {% for room in rooms %}
+
+        <tr>
+
+            <td>
+                {{ room.id }}
+            </td>
+
+            <td>
+                {{ room.hotel.name }}
+            </td>
+
+            <td>
+                {{ room.hotel.city }}
+            </td>
+
+            <td>
+                {{ room.room_number }}
+            </td>
+
+            <td>
+                {{ room.room_type }}
+            </td>
+
+            <td>
+                ₹{{ room.price_per_night }}
+            </td>
+
+            <td>
+                {{ room.capacity }}
+            </td>
+
+            <td>
+                {{ room.status }}
+            </td>
+
+            <td>
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'room.update_status',
+                        room_id=room.id
+                    ) }}"
+                >
+
+                    <select name="status">
+
+                        <option value="available">
+                            Available
+                        </option>
+
+                        <option value="occupied">
+                            Occupied
+                        </option>
+
+                        <option value="maintenance">
+                            Maintenance
+                        </option>
+
+                    </select>
+
+                    <button type="submit">
+                        Update
+                    </button>
+
+                </form>
+
+
+                <br>
+
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'room.delete_room',
+                        room_id=room.id
+                    ) }}"
+                >
+
+                    <button type="submit">
+                        Delete
+                    </button>
+
+                </form>
+
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </tbody>
+
+</table>
+
+{% else %}
+
+<p>
+    No rooms available.
+</p>
+
+{% endif %}
+
+{% endblock %}

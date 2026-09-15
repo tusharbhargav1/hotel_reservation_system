@@ -1,0 +1,393 @@
+
+{% extends "base.html" %}
+
+{% block title %}
+Room Availability
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container">
+
+
+     <!-- PAGE HEADER -->
+ 
+    <div class="section-title">
+
+        <h2>
+            Check Room Availability
+        </h2>
+
+        <p>
+            Find the perfect room for your stay
+        </p>
+
+    </div>
+
+
+
+     <!-- SEARCH FORM -->
+ 
+    <div class="form-card">
+
+        <form
+            method="POST"
+            action="{{ url_for('user.check_availability') }}"
+        >
+
+
+ 
+            <div class="form-group">
+
+                <label for="hotel_id">
+                    Select Hotel
+                </label>
+
+
+                <select
+                    id="hotel_id"
+                    name="hotel_id"
+                    required
+                >
+
+                    <option value="">
+                        -- Select Hotel --
+                    </option>
+
+
+                    {% for hotel in hotels %}
+
+                        <option
+                            value="{{ hotel.id }}"
+
+                            {% if selected_hotel_id|string == hotel.id|string %}
+
+                                selected
+
+                            {% endif %}
+                        >
+
+                            {{ hotel.name }}
+                            -
+                            {{ hotel.city }}
+
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+
+ 
+            <div class="form-group">
+
+                <label for="check_in">
+                    Check-In Date
+                </label>
+
+
+                <input
+                    type="date"
+                    id="check_in"
+                    name="check_in"
+
+                    {% if check_in %}
+
+                        value="{{ check_in }}"
+
+                    {% endif %}
+
+                    required
+                >
+
+            </div>
+
+
+
+ 
+            <div class="form-group">
+
+                <label for="check_out">
+                    Check-Out Date
+                </label>
+
+
+                <input
+                    type="date"
+                    id="check_out"
+                    name="check_out"
+
+                    {% if check_out %}
+
+                        value="{{ check_out }}"
+
+                    {% endif %}
+
+                    required
+                >
+
+            </div>
+
+
+
+ 
+            <div class="form-group">
+
+                <label for="guests">
+                    Number of Guests
+                </label>
+
+
+                <input
+                    type="number"
+                    id="guests"
+                    name="guests"
+
+                    {% if guests %}
+
+                        value="{{ guests }}"
+
+                    {% endif %}
+
+                    min="1"
+                    max="20"
+                    required
+                >
+
+            </div>
+
+
+
+ 
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+
+                Search Available Rooms
+
+            </button>
+
+        </form>
+
+    </div>
+
+    {% if rooms %}
+
+
+        <div class="section-title">
+
+            <h2>
+                Available Rooms
+            </h2>
+
+            <p>
+                Rooms matching your search
+            </p>
+
+        </div>
+
+        <div class="card-grid">
+
+
+            {% for room in rooms %}
+
+                <div class="card">
+
+                    <div class="card-image">
+
+
+                        {% if room.room_type == "Suite" %}
+
+                            <img
+                                src="{{ url_for(
+                                    'static',
+                                    filename='images/hotel4.jpg'
+                                ) }}"
+                                alt="Suite Room"
+                            >
+
+
+                        {% elif room.room_type == "Deluxe" %}
+
+
+                            <img
+                                src="{{ url_for(
+                                    'static',
+                                    filename='images/hotel2.jpg'
+                                ) }}"
+                                alt="Deluxe Room"
+                            >
+
+
+                        {% else %}
+
+
+                            <img
+                                src="{{ url_for(
+                                    'static',
+                                    filename='images/hotel1.jpg'
+                                ) }}"
+                                alt="Standard Room"
+
+
+                            >
+
+
+                        {% endif %}
+
+                    </div>
+
+
+                     <!-- ROOM DETAILS -->
+ 
+                    <div class="card-content">
+
+                        <h3>
+                            Room {{ room.room_number }}
+                        </h3>
+
+                        <p>
+
+                            <strong>
+                                Hotel:
+                            </strong>
+
+                            {{ room.hotel.name }}
+
+                        </p>
+
+                        <p>
+
+                            <strong>
+                                City:
+                            </strong>
+
+                            {{ room.hotel.city }}
+
+                        </p>
+
+
+                        <p>
+
+                            <strong>
+                                Room Type:
+                            </strong>
+
+                            {{ room.room_type }}
+
+                        </p>
+
+                        <p>
+
+                            <strong>
+                                Capacity:
+                            </strong>
+
+                            {{ room.capacity }}
+                            guests
+
+                        </p>
+
+                        <p>
+
+                            <strong>
+                                Price:
+                            </strong>
+
+                            ₹{{ room.price_per_night }}
+
+                            / night
+
+                        </p>
+
+                        <p>
+
+                            <span class="badge badge-success">
+
+                                Available
+
+                            </span>
+
+                        </p>
+
+
+                        <br>
+
+  
+                        <a
+                            href="{{ url_for(
+                                'user.book_room',
+                                room_id=room.id,
+                                check_in=check_in,
+                                check_out=check_out,
+                                guests=guests,
+                                hotel_id=selected_hotel_id
+                            ) }}"
+                            class="btn btn-primary"
+                        >
+
+                            Book This Room
+
+                        </a>
+
+
+                    </div>
+
+                </div>
+
+
+            {% endfor %}
+
+
+        </div>
+
+
+ 
+    {% elif check_in and check_out %}
+
+
+        <div class="card">
+
+            <div class="card-content">
+
+
+                <h3>
+                    No Rooms Available
+                </h3>
+
+
+                <p>
+                    No rooms match your selected hotel,
+                    dates and number of guests.
+                </p>
+
+
+                <br>
+
+
+                <a
+                    href="{{ url_for('user.check_availability') }}"
+                    class="btn btn-secondary"
+                >
+
+                    Search Again
+
+                </a>
+
+
+            </div>
+
+        </div>
+
+
+    {% endif %}
+
+
+</div>
+
+{% endblock %}

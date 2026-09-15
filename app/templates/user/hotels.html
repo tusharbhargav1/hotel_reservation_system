@@ -1,0 +1,196 @@
+
+{% extends "base.html" %}
+
+{% block title %}
+Our Hotels
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container">
+
+
+    <div class="section-title">
+
+        <h2>
+            Our Hotels
+        </h2>
+
+        <p>
+            Choose your preferred destination
+        </p>
+
+    </div>
+
+    {% if hotels %}
+
+        <div class="card-grid">
+
+            {% for hotel in hotels %}
+
+                <div class="card">
+
+
+                    <div class="card-image">
+
+                        {% if hotel.id == 1 %}
+
+                            <img
+                                src="{{ url_for(
+                                    'static',
+                                    filename='images/hotel1.jpg'
+                                ) }}"
+                                alt="Grand Palace Hotel"
+                            >
+
+                        {% elif hotel.id == 2 %}
+
+                            <img
+                                src="{{ url_for(
+                                    'static',
+                                    filename='images/hotel2.jpg'
+                                ) }}"
+                                alt="Royal Heritage Hotel"
+                            >
+
+                        {% elif hotel.id == 3 %}
+
+                            <img
+                                src="{{ url_for(
+                                    'static',
+                                    filename='images/hotel3.jpg'
+                                ) }}"
+                                alt="City View Hotel"
+                            >
+
+                        {% elif hotel.id == 4 %}
+
+                            <img
+                                src="{{ url_for(
+                                    'static',
+                                    filename='images/hotel4.jpg'
+                                ) }}"
+                                alt="Mountain Pearl Hotel"
+                            >
+
+                        {% elif hotel.id == 5 %}
+
+                            <img
+                                src="{{ url_for(
+                                    'static',
+                                    filename='images/hotel5.jpg'
+                                ) }}"
+                                alt="Sunrise Residency"
+                            >
+
+                        {% else %}
+
+                            <span>
+                                🏨
+                            </span>
+
+                        {% endif %}
+
+                    </div>
+
+
+ 
+                    <div class="card-content">
+
+                        <h3>
+                            {{ hotel.name }}
+                        </h3>
+
+
+                        <p>
+                            📍
+                            <strong>
+                                {{ hotel.city }}
+                            </strong>
+                        </p>
+
+
+                        <p>
+                            {{ hotel.address }}
+                        </p>
+
+
+                        {% if hotel.description %}
+
+                            <p>
+                                {{ hotel.description }}
+                            </p>
+
+                        {% endif %}
+
+
+                        <p>
+
+                            <strong>
+                                {{ hotel.rooms|length }}
+                            </strong>
+
+                            rooms available
+
+                        </p>
+
+
+                        <br>
+
+
+ 
+                        <a
+                            href="{{ url_for(
+                                'user.check_availability',
+                                hotel_id=hotel.id
+                            ) }}"
+                            class="btn btn-primary"
+                        >
+
+                            Check Availability
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+
+    {% else %}
+
+ 
+        <div class="card">
+
+            <div class="card-content">
+
+                <h3>
+                    No Hotels Available
+                </h3>
+
+                <p>
+                    There are currently no hotels available.
+                </p>
+
+                <br>
+
+                <a
+                    href="{{ url_for('user.dashboard') }}"
+                    class="btn btn-secondary"
+                >
+                    Back to Dashboard
+                </a>
+
+            </div>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

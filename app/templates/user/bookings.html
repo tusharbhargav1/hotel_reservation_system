@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}
+My Bookings
+{% endblock %}
+
+{% block content %}
+
+<h1>My Bookings</h1>
+
+<hr>
+
+{% if bookings %}
+
+    {% for booking in bookings %}
+
+        <div
+            style="
+                border: 1px solid #ccc;
+                padding: 20px;
+                margin-bottom: 20px;
+                border-radius: 8px;
+            "
+        >
+
+            <h2>
+                Booking #{{ booking.id }}
+            </h2>
+
+            <p>
+                <strong>Room:</strong>
+                {{ booking.room.room_number }}
+            </p>
+
+            <p>
+                <strong>Room Type:</strong>
+                {{ booking.room.room_type }}
+            </p>
+
+            <p>
+                <strong>Check-in:</strong>
+                {{ booking.check_in_date }}
+            </p>
+
+            <p>
+                <strong>Check-out:</strong>
+                {{ booking.check_out_date }}
+            </p>
+
+            <p>
+                <strong>Guests:</strong>
+                {{ booking.guests }}
+            </p>
+
+            <p>
+                <strong>Status:</strong>
+                {{ booking.status }}
+            </p>
+
+            <p>
+                <strong>Price per Night:</strong>
+                ₹{{ booking.room.price_per_night }}
+            </p>
+
+            {% if booking.status == "confirmed" %}
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'user.cancel_booking',
+                        booking_id=booking.id
+                    ) }}"
+                >
+
+                    <button type="submit">
+                        Cancel Booking
+                    </button>
+
+                </form>
+
+            {% endif %}
+
+        </div>
+
+    {% endfor %}
+
+{% else %}
+
+    <p>
+        You do not have any bookings yet.
+    </p>
+
+{% endif %}
+
+<br>
+
+<a href="{{ url_for('user.check_availability') }}">
+    Book Another Room
+</a>
+
+<br><br>
+
+<a href="{{ url_for('user.dashboard') }}">
+    Back to Dashboard
+</a>
+
+{% endblock %}

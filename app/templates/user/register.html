@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}
+User Registration
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Create User Account</h1>
+
+<form method="POST">
+
+    <label>
+        Name
+    </label>
+
+    <input
+        type="text"
+        name="name"
+        required
+    >
+
+
+    <label>
+        Email
+    </label>
+
+    <input
+        type="email"
+        name="email"
+        required
+    >
+
+
+    <label>
+        Phone
+    </label>
+
+    <input
+        type="text"
+        name="phone"
+    >
+
+
+    <label>
+        Password
+    </label>
+
+    <input
+        type="password"
+        name="password"
+        required
+    >
+
+
+    <button type="submit">
+        Register
+    </button>
+
+</form>
+
+
+<p>
+
+    Already have an account?
+
+    <a href="{{ url_for('user.login') }}">
+        Login
+    </a>
+
+</p>
+
+{% endblock %}

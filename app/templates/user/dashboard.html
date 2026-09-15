@@ -1,0 +1,171 @@
+
+{% extends "base.html" %}
+
+{% block title %}
+HotelStay - Home
+{% endblock %}
+
+
+{% block content %}
+
+
+ 
+<section class="hero">
+
+    <div class="hero-content">
+
+        <h1>
+            Find Your Perfect Stay
+        </h1>
+
+        <p>
+            Discover comfortable rooms across our
+            premium hotels and book your stay with ease.
+        </p>
+
+
+        {% if current_user.is_authenticated %}
+
+            <a
+                href="{{ url_for('user.check_availability') }}"
+                class="btn btn-primary"
+            >
+                Check Availability
+            </a>
+
+        {% else %}
+
+            <a
+                href="{{ url_for('user.login') }}"
+                class="btn btn-primary"
+            >
+                Start Booking
+            </a>
+
+        {% endif %}
+
+    </div>
+
+</section>
+
+
+ 
+<section class="section">
+
+    <div class="container">
+
+        <div class="section-title">
+
+            <h2>
+                Everything You Need
+            </h2>
+
+            <p>
+                Simple and convenient hotel reservation
+            </p>
+
+        </div>
+
+
+        <div class="card-grid">
+
+
+ 
+            <div class="card">
+
+                <div class="card-image">
+                    🏨
+                </div>
+
+                <div class="card-content">
+
+                    <h3>
+                        Premium Hotels
+                    </h3>
+
+                    <p>
+                        Explore our collection of hotels
+                        across different cities.
+                    </p>
+
+                    <a
+                        href="{{ url_for('hotel.hotels') }}"
+                        class="btn btn-dark"
+                    >
+                        View Hotels
+                    </a>
+
+                </div>
+
+            </div>
+
+
+ 
+            <div class="card">
+
+                <div class="card-image">
+                    🛏️
+                </div>
+
+                <div class="card-content">
+
+                    <h3>
+                        Comfortable Rooms
+                    </h3>
+
+                    <p>
+                        Choose from Standard, Deluxe
+                        and Suite rooms.
+                    </p>
+
+                    <a
+                        href="{{ url_for('user.available_rooms') }}"
+                        class="btn btn-dark"
+                    >
+                        View Rooms
+                    </a>
+
+                </div>
+
+            </div>
+
+
+ 
+            <div class="card">
+
+                <div class="card-image">
+                    📅
+                </div>
+
+                <div class="card-content">
+
+                    <h3>
+                        Easy Booking
+                    </h3>
+
+                    <p>
+                        Check availability and reserve
+                        your room in a few clicks.
+                    </p>
+
+                    <a
+                        href="{{ url_for('user.check_availability') }}"
+                        class="btn btn-primary"
+                    >
+                        Book Now
+                    </a>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+</section>
+
+
+{% endblock %}
+```

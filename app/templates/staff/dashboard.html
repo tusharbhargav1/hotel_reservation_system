@@ -1,0 +1,248 @@
+```html
+{% extends "base.html" %}
+
+{% block title %}
+Staff Dashboard
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container">
+
+
+    <div class="section-title">
+
+        <h2>
+            Staff Dashboard
+        </h2>
+
+        <p>
+            Welcome, {{ current_user.name }}
+        </p>
+
+    </div>
+
+
+          <!-- BOOKING STATISTICS -->
+ 
+    <h3>
+        Booking Statistics
+    </h3>
+
+
+    <div class="stats-grid">
+
+
+        <div class="stat-card">
+
+            <h2>
+                {{ total_bookings }}
+            </h2>
+
+            <p>
+                Total Bookings
+            </p>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <h2>
+                {{ confirmed_bookings }}
+            </h2>
+
+            <p>
+                Confirmed
+            </p>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <h2>
+                {{ checked_in }}
+            </h2>
+
+            <p>
+                Checked-In
+            </p>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <h2>
+                {{ checked_out }}
+            </h2>
+
+            <p>
+                Checked-Out
+            </p>
+
+        </div>
+
+    </div>
+
+
+          <!-- ROOM STATISTICS -->
+ 
+    <h3>
+        Room Statistics
+    </h3>
+
+
+    <div class="stats-grid">
+
+
+        <div class="stat-card">
+
+            <h2>
+                {{ available_rooms }}
+            </h2>
+
+            <p>
+                Available
+            </p>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <h2>
+                {{ occupied_rooms }}
+            </h2>
+
+            <p>
+                Occupied
+            </p>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <h2>
+                {{ maintenance_rooms }}
+            </h2>
+
+            <p>
+                Maintenance
+            </p>
+
+        </div>
+
+    </div>
+
+
+          <!-- OPERATIONS -->
+ 
+    <div class="card-grid">
+
+
+        <div class="card">
+
+            <div class="card-content">
+
+                <h3>
+                    Bookings
+                </h3>
+
+                <p>
+                    View all customer reservations.
+                </p>
+
+                <a
+                    href="{{ url_for('staff.bookings') }}"
+                    class="btn btn-dark"
+                >
+                    View Bookings
+                </a>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-content">
+
+                <h3>
+                    Guest Check-In
+                </h3>
+
+                <p>
+                    Check in arriving guests.
+                </p>
+
+                <a
+                    href="{{ url_for('staff.checkin') }}"
+                    class="btn btn-success"
+                >
+                    Check-In
+                </a>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-content">
+
+                <h3>
+                    Guest Check-Out
+                </h3>
+
+                <p>
+                    Check out guests and generate bills.
+                </p>
+
+                <a
+                    href="{{ url_for('staff.checkout') }}"
+                    class="btn btn-primary"
+                >
+                    Check-Out
+                </a>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-content">
+
+                <h3>
+                    Room Management
+                </h3>
+
+                <p>
+                    Manage hotel rooms and availability.
+                </p>
+
+                <a
+                    href="{{ url_for('room.rooms') }}"
+                    class="btn btn-dark"
+                >
+                    Manage Rooms
+                </a>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+{% endblock %}
+
