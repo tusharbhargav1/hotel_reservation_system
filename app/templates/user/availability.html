@@ -35,6 +35,13 @@ Room Availability
             method="POST"
             action="{{ url_for('user.check_availability') }}"
         >
+        <input
+    type="hidden"
+    name="csrf_token"
+    value="{{ csrf_token() }}"
+>
+
+    
 
 
  

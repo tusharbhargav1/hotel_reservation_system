@@ -71,6 +71,11 @@ My Bookings
                         booking_id=booking.id
                     ) }}"
                 >
+                <input
+    type="hidden"
+    name="csrf_token"
+    value="{{ csrf_token() }}"
+>
 
                     <button type="submit">
                         Cancel Booking

@@ -1,22 +1,26 @@
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
+
 from flask import (
     Blueprint,
     render_template,
     request,
     redirect,
     url_for,
-    flash
+    flash,
+    abort
 )
 
 from flask_login import (
     login_user,
     logout_user,
-    login_required
+    current_user
 )
 
 from werkzeug.security import check_password_hash
-from datetime import datetime
 
 from app.extensions import db
+
 from app.models import (
     Staff,
     Booking,
@@ -24,6 +28,8 @@ from app.models import (
     Bill,
     Payment
 )
+
+from app.security import staff_required
 
 
 staff_bp = Blueprint(
@@ -33,15 +39,25 @@ staff_bp = Blueprint(
 )
 
 
- # STAFF LOGIN
- 
-@staff_bp.route("/login", methods=["GET", "POST"])
+# =====================================================
+# STAFF LOGIN
+# =====================================================
+
+@staff_bp.route(
+    "/login",
+    methods=["GET", "POST"]
+)
 def login():
 
     if request.method == "POST":
 
-        email = request.form.get("email")
-        password = request.form.get("password")
+        email = request.form.get(
+            "email", ""
+        ).strip().lower()
+
+        password = request.form.get(
+            "password", ""
+        )
 
         staff = Staff.query.filter_by(
             email=email
@@ -52,7 +68,10 @@ def login():
             password
         ):
 
-            login_user(staff)
+            login_user(
+                staff,
+                remember=False
+            )
 
             flash(
                 "Staff login successful.",
@@ -73,10 +92,12 @@ def login():
     )
 
 
- # STAFF DASHBOARD
- 
+# =====================================================
+# STAFF DASHBOARD
+# =====================================================
+
 @staff_bp.route("/dashboard")
-@login_required
+@staff_required
 def dashboard():
 
     total_bookings = Booking.query.count()
@@ -117,10 +138,12 @@ def dashboard():
     )
 
 
- # VIEW ALL BOOKINGS
- 
+# =====================================================
+# VIEW ALL BOOKINGS
+# =====================================================
+
 @staff_bp.route("/bookings")
-@login_required
+@staff_required
 def bookings():
 
     bookings = Booking.query.order_by(
@@ -133,17 +156,25 @@ def bookings():
     )
 
 
- # CHECK-IN
- 
-@staff_bp.route("/checkin", methods=["GET", "POST"])
-@login_required
+# =====================================================
+# STAFF CHECK-IN
+# =====================================================
+
+@staff_bp.route(
+    "/checkin",
+    methods=["GET", "POST"]
+)
+@staff_required
 def checkin():
 
     if request.method == "POST":
 
-        booking_id = request.form.get("booking_id")
+        booking_id = request.form.get(
+            "booking_id", ""
+        )
 
         try:
+
             booking_id = int(booking_id)
 
         except (ValueError, TypeError):
@@ -163,15 +194,7 @@ def checkin():
         )
 
         if booking is None:
-
-            flash(
-                "Booking not found.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("staff.checkin")
-            )
+            abort(404)
 
         if booking.status != "confirmed":
 
@@ -187,9 +210,12 @@ def checkin():
         room = booking.room
 
         if room is None:
+            abort(404)
+
+        if room.status != "available":
 
             flash(
-                "Room not found.",
+                "This room is not currently available.",
                 "danger"
             )
 
@@ -197,10 +223,17 @@ def checkin():
                 url_for("staff.checkin")
             )
 
-        if room.status != "available":
+        # Check for another active booking in this room.
+        conflict = Booking.query.filter(
+            Booking.room_id == room.id,
+            Booking.id != booking.id,
+            Booking.status == "checked_in"
+        ).first()
+
+        if conflict:
 
             flash(
-                "Room is not available.",
+                "Room already has a checked-in guest.",
                 "danger"
             )
 
@@ -209,13 +242,28 @@ def checkin():
             )
 
         booking.status = "checked_in"
+
         room.status = "occupied"
 
-        db.session.commit()
+        try:
+
+            db.session.commit()
+
+        except Exception:
+
+            db.session.rollback()
+
+            flash(
+                "Check-in failed. Please try again.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("staff.checkin")
+            )
 
         flash(
-            f"Guest checked in successfully to room "
-            f"{room.room_number}.",
+            f"Guest checked in to room {room.room_number}.",
             "success"
         )
 
@@ -235,17 +283,25 @@ def checkin():
     )
 
 
- # CHECK-OUT + BILL GENERATION
- 
-@staff_bp.route("/checkout", methods=["GET", "POST"])
-@login_required
+# =====================================================
+# STAFF CHECK-OUT
+# =====================================================
+
+@staff_bp.route(
+    "/checkout",
+    methods=["GET", "POST"]
+)
+@staff_required
 def checkout():
 
     if request.method == "POST":
 
-        booking_id = request.form.get("booking_id")
+        booking_id = request.form.get(
+            "booking_id", ""
+        )
 
         try:
+
             booking_id = int(booking_id)
 
         except (ValueError, TypeError):
@@ -265,15 +321,7 @@ def checkout():
         )
 
         if booking is None:
-
-            flash(
-                "Booking not found.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("staff.checkout")
-            )
+            abort(404)
 
         if booking.status != "checked_in":
 
@@ -289,15 +337,7 @@ def checkout():
         room = booking.room
 
         if room is None:
-
-            flash(
-                "Room not found.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("staff.checkout")
-            )
+            abort(404)
 
         nights = (
             booking.check_out_date
@@ -315,76 +355,82 @@ def checkout():
                 url_for("staff.checkout")
             )
 
+        # Calculate bill amounts using Decimal.
         room_charges = (
-            room.price_per_night * nights
+            Decimal(str(room.price_per_night))
+            * Decimal(nights)
         )
 
-        tax_rate = 0.18
+        tax_rate = Decimal("0.18")
 
         tax = (
             room_charges * tax_rate
+        ).quantize(
+            Decimal("0.01")
         )
 
-        discount = 0
+        discount = Decimal("0.00")
 
         total_amount = (
-            room_charges
-            + tax
-            - discount
+            room_charges + tax - discount
+        ).quantize(
+            Decimal("0.01")
         )
 
-         # CREATE OR GET BILL
- 
         existing_bill = Bill.query.filter_by(
             booking_id=booking.id
         ).first()
 
-        if existing_bill:
-
-            bill = existing_bill
-
-        else:
-
-            bill = Bill(
-                booking_id=booking.id,
-                room_charges=room_charges,
-                tax=tax,
-                discount=discount,
-                total_amount=total_amount
-            )
-
-            db.session.add(bill)
-
-         # CREATE OR GET PAYMENT
- 
         existing_payment = Payment.query.filter_by(
             booking_id=booking.id
         ).first()
 
-        if existing_payment:
+        try:
 
-            payment = existing_payment
+            if existing_bill is None:
 
-        else:
+                bill = Bill(
+                    booking_id=booking.id,
+                    room_charges=room_charges,
+                    tax=tax,
+                    discount=discount,
+                    total_amount=total_amount
+                )
 
-            payment = Payment(
-                booking_id=booking.id,
-                amount=total_amount,
-                payment_method="pending",
-                payment_status="pending"
+                db.session.add(bill)
+
+            if existing_payment is None:
+
+                payment = Payment(
+                    booking_id=booking.id,
+                    amount=total_amount,
+                    payment_method="pending",
+                    payment_status="pending"
+                )
+
+                db.session.add(payment)
+
+            booking.status = "checked_out"
+
+            room.status = "available"
+
+            db.session.commit()
+
+        except Exception:
+
+            db.session.rollback()
+
+            flash(
+                "Checkout failed. Please try again.",
+                "danger"
             )
 
-            db.session.add(payment)
-
-         # UPDATE BOOKING AND ROOM
- 
-        booking.status = "checked_out"
-        room.status = "available"
-
-        db.session.commit()
+            return redirect(
+                url_for("staff.checkout")
+            )
 
         flash(
-            "Guest checked out and bill generated successfully.",
+            "Guest checked out and bill generated.",
             "success"
         )
 
@@ -407,10 +453,14 @@ def checkout():
     )
 
 
- # VIEW BILL
- 
-@staff_bp.route("/bill/<int:booking_id>")
-@login_required
+# =====================================================
+# STAFF VIEW BILL
+# =====================================================
+
+@staff_bp.route(
+    "/bill/<int:booking_id>"
+)
+@staff_required
 def view_bill(booking_id):
 
     booking = db.session.get(
@@ -419,15 +469,7 @@ def view_bill(booking_id):
     )
 
     if booking is None:
-
-        flash(
-            "Booking not found.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("staff.bookings")
-        )
+        abort(404)
 
     bill = Bill.query.filter_by(
         booking_id=booking.id
@@ -441,7 +483,7 @@ def view_bill(booking_id):
 
         flash(
             "Bill has not been generated yet.",
-            "danger"
+            "info"
         )
 
         return redirect(
@@ -462,13 +504,15 @@ def view_bill(booking_id):
     )
 
 
- # PROCESS PAYMENT
- 
+# =====================================================
+# PROCESS PAYMENT
+# =====================================================
+
 @staff_bp.route(
     "/payment/<int:booking_id>",
     methods=["POST"]
 )
-@login_required
+@staff_required
 def process_payment(booking_id):
 
     booking = db.session.get(
@@ -477,15 +521,7 @@ def process_payment(booking_id):
     )
 
     if booking is None:
-
-        flash(
-            "Booking not found.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("staff.bookings")
-        )
+        abort(404)
 
     bill = Bill.query.filter_by(
         booking_id=booking.id
@@ -532,21 +568,19 @@ def process_payment(booking_id):
         )
 
     payment_method = request.form.get(
-        "payment_method"
-    )
+        "payment_method", ""
+    ).strip().lower()
 
-     # ONLY CASH AND UPI ARE ALLOWED
- 
     allowed_methods = [
         "cash",
+        "card",
         "upi"
     ]
 
     if payment_method not in allowed_methods:
 
         flash(
-            "Invalid payment method. "
-            "Please select Cash or UPI.",
+            "Invalid payment method.",
             "danger"
         )
 
@@ -557,6 +591,8 @@ def process_payment(booking_id):
             )
         )
 
+    # This records payment in the project database.
+    # It does not contact a real payment gateway.
     payment.amount = bill.total_amount
 
     payment.payment_method = payment_method
@@ -570,11 +606,28 @@ def process_payment(booking_id):
 
     payment.paid_at = datetime.now()
 
-    db.session.commit()
+    try:
+
+        db.session.commit()
+
+    except Exception:
+
+        db.session.rollback()
+
+        flash(
+            "Payment recording failed.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "staff.view_bill",
+                booking_id=booking.id
+            )
+        )
 
     flash(
-        f"Payment completed successfully using "
-        f"{payment_method.upper()}.",
+        "Payment recorded successfully.",
         "success"
     )
 
@@ -586,10 +639,12 @@ def process_payment(booking_id):
     )
 
 
- # STAFF LOGOUT
- 
+# =====================================================
+# STAFF LOGOUT
+# =====================================================
+
 @staff_bp.route("/logout")
-@login_required
+@staff_required
 def logout():
 
     logout_user()

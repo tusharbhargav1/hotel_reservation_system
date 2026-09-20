@@ -164,6 +164,11 @@ Guest Check-Out
                 method="POST"
                 action="{{ url_for('staff.checkout') }}"
             >
+            <input
+    type="hidden"
+    name="csrf_token"
+    value="{{ csrf_token() }}"
+>
 
                 <input
                     type="hidden"

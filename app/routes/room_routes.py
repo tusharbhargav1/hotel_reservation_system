@@ -1,13 +1,14 @@
+from decimal import Decimal, InvalidOperation
+
 from flask import (
     Blueprint,
     render_template,
     request,
     redirect,
     url_for,
-    flash
+    flash,
+    abort
 )
-
-from flask_login import login_required
 
 from app.extensions import db
 
@@ -15,6 +16,8 @@ from app.models import (
     Room,
     Hotel
 )
+
+from app.security import staff_required
 
 
 room_bp = Blueprint(
@@ -24,10 +27,12 @@ room_bp = Blueprint(
 )
 
 
- # VIEW ALL ROOMS
- 
+# =====================================================
+# VIEW ALL ROOMS
+# =====================================================
+
 @room_bp.route("/")
-@login_required
+@staff_required
 def rooms():
 
     all_rooms = Room.query.order_by(
@@ -41,13 +46,15 @@ def rooms():
     )
 
 
- # ADD NEW ROOM
- 
+# =====================================================
+# ADD ROOM
+# =====================================================
+
 @room_bp.route(
     "/add",
     methods=["GET", "POST"]
 )
-@login_required
+@staff_required
 def add_room():
 
     hotels = Hotel.query.order_by(
@@ -57,24 +64,59 @@ def add_room():
     if request.method == "POST":
 
         hotel_id = request.form.get(
-            "hotel_id"
+            "hotel_id", ""
         )
 
         room_number = request.form.get(
-            "room_number"
-        )
+            "room_number", ""
+        ).strip()
 
         room_type = request.form.get(
-            "room_type"
-        )
+            "room_type", ""
+        ).strip()
 
-        price_per_night = request.form.get(
-            "price_per_night"
+        price = request.form.get(
+            "price_per_night", ""
         )
 
         capacity = request.form.get(
-            "capacity"
+            "capacity", ""
         )
+
+        try:
+
+            hotel_id = int(hotel_id)
+
+            capacity = int(capacity)
+
+            price = Decimal(price)
+
+        except (ValueError, TypeError, InvalidOperation):
+
+            flash(
+                "Please enter valid room details.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("room.add_room")
+            )
+
+        if (
+            not room_number
+            or not room_type
+            or capacity < 1
+            or price <= 0
+        ):
+
+            flash(
+                "Room number, type, capacity and positive price are required.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("room.add_room")
+            )
 
         hotel = db.session.get(
             Hotel,
@@ -84,7 +126,7 @@ def add_room():
         if hotel is None:
 
             flash(
-                "Invalid hotel selected.",
+                "Selected hotel does not exist.",
                 "danger"
             )
 
@@ -100,7 +142,7 @@ def add_room():
         if existing_room:
 
             flash(
-                "This room number already exists in this hotel.",
+                "That room number already exists in this hotel.",
                 "danger"
             )
 
@@ -109,24 +151,31 @@ def add_room():
             )
 
         room = Room(
-
             hotel_id=hotel_id,
-
             room_number=room_number,
-
             room_type=room_type,
-
-            price_per_night=price_per_night,
-
+            price_per_night=price,
             capacity=capacity,
-
             status="available"
-
         )
 
-        db.session.add(room)
+        try:
 
-        db.session.commit()
+            db.session.add(room)
+            db.session.commit()
+
+        except Exception:
+
+            db.session.rollback()
+
+            flash(
+                "Unable to add room.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("room.add_room")
+            )
 
         flash(
             "Room added successfully.",
@@ -143,10 +192,12 @@ def add_room():
     )
 
 
- # VIEW SINGLE ROOM
- 
+# =====================================================
+# ROOM DETAILS
+# =====================================================
+
 @room_bp.route("/<int:room_id>")
-@login_required
+@staff_required
 def room_details(room_id):
 
     room = db.session.get(
@@ -155,15 +206,7 @@ def room_details(room_id):
     )
 
     if room is None:
-
-        flash(
-            "Room not found.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("room.rooms")
-        )
+        abort(404)
 
     return render_template(
         "staff/rooms.html",
@@ -171,13 +214,15 @@ def room_details(room_id):
     )
 
 
- # UPDATE ROOM STATUS
- 
+# =====================================================
+# UPDATE ROOM STATUS
+# =====================================================
+
 @room_bp.route(
     "/<int:room_id>/status",
     methods=["POST"]
 )
-@login_required
+@staff_required
 def update_status(room_id):
 
     room = db.session.get(
@@ -186,19 +231,11 @@ def update_status(room_id):
     )
 
     if room is None:
-
-        flash(
-            "Room not found.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("room.rooms")
-        )
+        abort(404)
 
     status = request.form.get(
-        "status"
-    )
+        "status", ""
+    ).strip().lower()
 
     allowed_statuses = [
         "available",
@@ -217,9 +254,50 @@ def update_status(room_id):
             url_for("room.rooms")
         )
 
+    # Do not manually mark a room available
+    # while a guest is checked in.
+    active_booking = None
+
+    if status == "available":
+
+        active_booking = next(
+            (
+                booking
+                for booking in room.bookings
+                if booking.status == "checked_in"
+            ),
+            None
+        )
+
+    if active_booking:
+
+        flash(
+            "Cannot mark a room available while a guest is checked in.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("room.rooms")
+        )
+
     room.status = status
 
-    db.session.commit()
+    try:
+
+        db.session.commit()
+
+    except Exception:
+
+        db.session.rollback()
+
+        flash(
+            "Unable to update room status.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("room.rooms")
+        )
 
     flash(
         f"Room {room.room_number} status updated.",
@@ -231,13 +309,15 @@ def update_status(room_id):
     )
 
 
- # DELETE ROOM
- 
+# =====================================================
+# DELETE ROOM
+# =====================================================
+
 @room_bp.route(
     "/<int:room_id>/delete",
     methods=["POST"]
 )
-@login_required
+@staff_required
 def delete_room(room_id):
 
     room = db.session.get(
@@ -246,20 +326,13 @@ def delete_room(room_id):
     )
 
     if room is None:
+        abort(404)
 
-        flash(
-            "Room not found.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("room.rooms")
-        )
-
+    # Preserve booking history.
     if room.bookings:
 
         flash(
-            "Cannot delete a room with existing bookings.",
+            "Cannot delete a room with existing booking records.",
             "danger"
         )
 
@@ -267,12 +340,26 @@ def delete_room(room_id):
             url_for("room.rooms")
         )
 
-    db.session.delete(room)
+    try:
 
-    db.session.commit()
+        db.session.delete(room)
+        db.session.commit()
+
+    except Exception:
+
+        db.session.rollback()
+
+        flash(
+            "Unable to delete room.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("room.rooms")
+        )
 
     flash(
-        f"Room {room.room_number} deleted successfully.",
+        "Room deleted successfully.",
         "success"
     )
 

@@ -1,11 +1,13 @@
 from flask import (
     Blueprint,
-    render_template
+    render_template,
+    abort
 )
 
-from flask_login import login_required
-
 from app.models import Hotel
+
+from app.security import user_required
+
 
 hotel_bp = Blueprint(
     "hotel",
@@ -13,10 +15,13 @@ hotel_bp = Blueprint(
     url_prefix="/hotels"
 )
 
-# SHOW ALL HOTELS
+
+# =====================================================
+# VIEW ALL HOTELS
+# =====================================================
 
 @hotel_bp.route("/")
-@login_required
+@user_required
 def hotels():
 
     hotels = Hotel.query.order_by(
@@ -28,10 +33,13 @@ def hotels():
         hotels=hotels
     )
 
+
+# =====================================================
 # HOTEL DETAILS
+# =====================================================
 
 @hotel_bp.route("/<int:hotel_id>")
-@login_required
+@user_required
 def hotel_details(hotel_id):
 
     hotel = Hotel.query.get_or_404(

@@ -1,16 +1,19 @@
+from datetime import date
+from decimal import Decimal
+
 from flask import (
     Blueprint,
     render_template,
     request,
     redirect,
     url_for,
-    flash
+    flash,
+    abort
 )
 
 from flask_login import (
     login_user,
     logout_user,
-    login_required,
     current_user
 )
 
@@ -19,20 +22,20 @@ from werkzeug.security import (
     check_password_hash
 )
 
-from datetime import date
-
 from app.extensions import db
 
 from app.models import (
     User,
     Hotel,
     Room,
-    Booking
+    Booking,
+    Bill,
+    Payment
 )
 
+from app.security import user_required
 
- # USER BLUEPRINT
- 
+
 user_bp = Blueprint(
     "user",
     __name__,
@@ -40,8 +43,10 @@ user_bp = Blueprint(
 )
 
 
- # USER HOME
- 
+# =====================================================
+# HOME
+# =====================================================
+
 @user_bp.route("/")
 def home():
 
@@ -50,8 +55,10 @@ def home():
     )
 
 
- # USER REGISTER
- 
+# =====================================================
+# USER REGISTRATION
+# =====================================================
+
 @user_bp.route(
     "/register",
     methods=["GET", "POST"]
@@ -60,13 +67,22 @@ def register():
 
     if request.method == "POST":
 
-        name = request.form.get("name")
-        email = request.form.get("email")
-        phone = request.form.get("phone")
-        password = request.form.get("password")
+        name = request.form.get(
+            "name", ""
+        ).strip()
 
-         # BASIC VALIDATION
- 
+        email = request.form.get(
+            "email", ""
+        ).strip().lower()
+
+        phone = request.form.get(
+            "phone", ""
+        ).strip()
+
+        password = request.form.get(
+            "password", ""
+        )
+
         if not name or not email or not password:
 
             flash(
@@ -78,16 +94,10 @@ def register():
                 url_for("user.register")
             )
 
-         # CHECK EXISTING USER
- 
-        existing_user = User.query.filter_by(
-            email=email
-        ).first()
-
-        if existing_user:
+        if len(password) < 8:
 
             flash(
-                "Email already registered.",
+                "Password must contain at least 8 characters.",
                 "danger"
             )
 
@@ -95,28 +105,50 @@ def register():
                 url_for("user.register")
             )
 
-         # CREATE USER
- 
+        existing_user = User.query.filter_by(
+            email=email
+        ).first()
+
+        if existing_user:
+
+            flash(
+                "Email is already registered.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("user.register")
+            )
+
         user = User(
-
             name=name,
-
             email=email,
-
             phone=phone,
-
             password_hash=generate_password_hash(
                 password
             )
-
         )
 
-        db.session.add(user)
+        try:
 
-        db.session.commit()
+            db.session.add(user)
+            db.session.commit()
+
+        except Exception:
+
+            db.session.rollback()
+
+            flash(
+                "Registration failed. Please try again.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("user.register")
+            )
 
         flash(
-            "Registration successful. Please login.",
+            "Registration successful. Please log in.",
             "success"
         )
 
@@ -129,8 +161,10 @@ def register():
     )
 
 
- # USER LOGIN
- 
+# =====================================================
+# USER LOGIN
+# =====================================================
+
 @user_bp.route(
     "/login",
     methods=["GET", "POST"]
@@ -139,24 +173,27 @@ def login():
 
     if request.method == "POST":
 
-        email = request.form.get("email")
+        email = request.form.get(
+            "email", ""
+        ).strip().lower()
 
-        password = request.form.get("password")
+        password = request.form.get(
+            "password", ""
+        )
 
-         # FIND USER
- 
         user = User.query.filter_by(
             email=email
         ).first()
 
-         # CHECK PASSWORD
- 
         if user and check_password_hash(
             user.password_hash,
             password
         ):
 
-            login_user(user)
+            login_user(
+                user,
+                remember=False
+            )
 
             flash(
                 "Login successful.",
@@ -177,21 +214,59 @@ def login():
     )
 
 
- # USER DASHBOARD
- 
+# =====================================================
+# USER DASHBOARD
+# =====================================================
+
 @user_bp.route("/dashboard")
-@login_required
+@user_required
 def dashboard():
 
+    total_bookings = Booking.query.filter_by(
+        user_id=current_user.id
+    ).count()
+
+    active_bookings = Booking.query.filter(
+        Booking.user_id == current_user.id,
+        Booking.status.in_([
+            "confirmed",
+            "checked_in"
+        ])
+    ).count()
+
     return render_template(
-        "user/dashboard.html"
+        "user/dashboard.html",
+        total_bookings=total_bookings,
+        active_bookings=active_bookings
     )
 
 
- # SHOW ALL HOTELS
- 
+# =====================================================
+# USER LOGOUT
+# =====================================================
+
+@user_bp.route("/logout")
+@user_required
+def logout():
+
+    logout_user()
+
+    flash(
+        "You have been logged out.",
+        "success"
+    )
+
+    return redirect(
+        url_for("user.login")
+    )
+
+
+# =====================================================
+# VIEW USER HOTELS
+# =====================================================
+
 @user_bp.route("/hotels")
-@login_required
+@user_required
 def hotels():
 
     hotels = Hotel.query.order_by(
@@ -204,46 +279,17 @@ def hotels():
     )
 
 
- # HOTEL DETAILS
- 
-@user_bp.route(
-    "/hotels/<int:hotel_id>"
-)
-@login_required
-def hotel_details(hotel_id):
+# =====================================================
+# VIEW ROOMS
+# =====================================================
 
-    hotel = db.session.get(
-        Hotel,
-        hotel_id
-    )
-
-    if hotel is None:
-
-        flash(
-            "Hotel not found.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("user.hotels")
-        )
-
-    return render_template(
-        "user/hotels.html",
-        hotels=[hotel]
-    )
-
-
- # VIEW ALL AVAILABLE ROOMS
- 
 @user_bp.route("/rooms")
-@login_required
+@user_required
 def available_rooms():
 
     rooms = Room.query.filter_by(
         status="available"
     ).order_by(
-        Room.hotel_id,
         Room.room_number
     ).all()
 
@@ -253,83 +299,108 @@ def available_rooms():
     )
 
 
- # CHECK ROOM AVAILABILITY
- 
+# =====================================================
+# CHECK ROOM AVAILABILITY
+# =====================================================
+
 @user_bp.route(
     "/availability",
     methods=["GET", "POST"]
 )
-@login_required
+@user_required
 def check_availability():
 
-     # GET ALL HOTELS
- 
     hotels = Hotel.query.order_by(
         Hotel.name
     ).all()
 
-     # DEFAULT VALUES
- 
-    available_rooms = []
+    rooms = []
 
-    check_in = None
+    selected_hotel_id = request.args.get(
+        "hotel_id", ""
+    )
 
-    check_out = None
+    check_in = ""
+    check_out = ""
+    guests = ""
 
-    guests = None
-
-    hotel_id = None
-
-     # GET HOTEL ID
- 
-    if request.method == "GET":
-
-        hotel_id = request.args.get(
-            "hotel_id"
-        )
-
-     # POST REQUEST
- 
     if request.method == "POST":
 
-        hotel_id = request.form.get(
-            "hotel_id"
+        selected_hotel_id = request.form.get(
+            "hotel_id", ""
         )
 
-        check_in_string = request.form.get(
-            "check_in"
+        check_in = request.form.get(
+            "check_in", ""
         )
 
-        check_out_string = request.form.get(
-            "check_out"
+        check_out = request.form.get(
+            "check_out", ""
         )
 
-        guests_string = request.form.get(
-            "guests"
+        guests = request.form.get(
+            "guests", ""
         )
 
-         # CHECK HOTEL
- 
-        if not hotel_id:
+    if check_in and check_out and guests and selected_hotel_id:
+
+        try:
+
+            check_in_date = date.fromisoformat(
+                check_in
+            )
+
+            check_out_date = date.fromisoformat(
+                check_out
+            )
+
+            guest_count = int(guests)
+
+            hotel_id = int(
+                selected_hotel_id
+            )
+
+        except (ValueError, TypeError):
 
             flash(
-                "Please select a hotel.",
+                "Please enter valid search details.",
                 "danger"
             )
 
             return render_template(
                 "user/availability.html",
-                rooms=[],
                 hotels=hotels,
-                selected_hotel_id=None,
-                check_in=None,
-                check_out=None,
-                guests=None
+                rooms=[],
+                selected_hotel_id=selected_hotel_id,
+                check_in=check_in,
+                check_out=check_out,
+                guests=guests
+            )
+
+        if (
+            check_in_date < date.today()
+            or check_out_date <= check_in_date
+            or guest_count < 1
+        ):
+
+            flash(
+                "Please select valid dates and guest count.",
+                "danger"
+            )
+
+            return render_template(
+                "user/availability.html",
+                hotels=hotels,
+                rooms=[],
+                selected_hotel_id=selected_hotel_id,
+                check_in=check_in,
+                check_out=check_out,
+                guests=guests
             )
 
         hotel = db.session.get(
             Hotel,
-            int(hotel_id)
+            hotel_id
         )
 
         if hotel is None:
@@ -339,504 +410,113 @@ def check_availability():
                 "danger"
             )
 
-            return render_template(
-                "user/availability.html",
-                rooms=[],
-                hotels=hotels,
-                selected_hotel_id=None,
-                check_in=None,
-                check_out=None,
-                guests=None
+            return redirect(
+                url_for("user.check_availability")
             )
 
-         # CONVERT DATES
- 
-        try:
-
-            check_in = date.fromisoformat(
-                check_in_string
-            )
-
-            check_out = date.fromisoformat(
-                check_out_string
-            )
-
-        except (ValueError, TypeError):
-
-            flash(
-                "Please enter valid dates.",
-                "danger"
-            )
-
-            return render_template(
-                "user/availability.html",
-                rooms=[],
-                hotels=hotels,
-                selected_hotel_id=hotel_id,
-                check_in=None,
-                check_out=None,
-                guests=None
-            )
-
-         # CONVERT GUESTS
- 
-        try:
-
-            guests = int(
-                guests_string
-            )
-
-        except (ValueError, TypeError):
-
-            flash(
-                "Please enter a valid number of guests.",
-                "danger"
-            )
-
-            return render_template(
-                "user/availability.html",
-                rooms=[],
-                hotels=hotels,
-                selected_hotel_id=hotel_id,
-                check_in=check_in,
-                check_out=check_out,
-                guests=None
-            )
-
-         # GUEST VALIDATION
- 
-        if guests < 1:
-
-            flash(
-                "Number of guests must be at least 1.",
-                "danger"
-            )
-
-            return render_template(
-                "user/availability.html",
-                rooms=[],
-                hotels=hotels,
-                selected_hotel_id=hotel_id,
-                check_in=check_in,
-                check_out=check_out,
-                guests=guests
-            )
-
-         # CHECK-IN DATE VALIDATION
- 
-        if check_in < date.today():
-
-            flash(
-                "Check-in date cannot be in the past.",
-                "danger"
-            )
-
-            return render_template(
-                "user/availability.html",
-                rooms=[],
-                hotels=hotels,
-                selected_hotel_id=hotel_id,
-                check_in=check_in,
-                check_out=check_out,
-                guests=guests
-            )
-
-         # CHECK-OUT DATE VALIDATION
- 
-        if check_out <= check_in:
-
-            flash(
-                "Check-out date must be after check-in date.",
-                "danger"
-            )
-
-            return render_template(
-                "user/availability.html",
-                rooms=[],
-                hotels=hotels,
-                selected_hotel_id=hotel_id,
-                check_in=check_in,
-                check_out=check_out,
-                guests=guests
-            )
-
-         # FIND OVERLAPPING BOOKINGS
- 
+        # Find bookings that overlap the requested dates.
         overlapping_bookings = Booking.query.filter(
-
             Booking.status.in_([
                 "confirmed",
                 "checked_in"
             ]),
-
-            Booking.check_in_date < check_out,
-
-            Booking.check_out_date > check_in
-
+            Booking.check_in_date < check_out_date,
+            Booking.check_out_date > check_in_date
         ).all()
 
-         # GET BOOKED ROOM IDS
- 
         booked_room_ids = {
-
             booking.room_id
-
             for booking in overlapping_bookings
-
         }
 
-         # FIND AVAILABLE ROOMS
- 
-        available_rooms = Room.query.filter(
-
-            Room.hotel_id == int(hotel_id),
-
+        candidate_rooms = Room.query.filter(
+            Room.hotel_id == hotel_id,
             Room.status == "available",
-
-            Room.capacity >= guests
-
+            Room.capacity >= guest_count
         ).order_by(
             Room.room_number
         ).all()
 
-         # REMOVE ROOMS WITH BOOKINGS
- 
-        available_rooms = [
-
+        rooms = [
             room
-
-            for room in available_rooms
-
+            for room in candidate_rooms
             if room.id not in booked_room_ids
-
         ]
 
-     # RENDER PAGE
- 
     return render_template(
-
         "user/availability.html",
-
-        rooms=available_rooms,
-
         hotels=hotels,
-
-        selected_hotel_id=hotel_id,
-
+        rooms=rooms,
+        selected_hotel_id=selected_hotel_id,
         check_in=check_in,
-
         check_out=check_out,
-
         guests=guests
-
     )
 
 
- # BOOK ROOM
- 
+# =====================================================
+# BOOK A ROOM
+# =====================================================
+
 @user_bp.route(
     "/book/<int:room_id>",
     methods=["GET", "POST"]
 )
-@login_required
+@user_required
 def book_room(room_id):
 
-     # FIND ROOM
- 
     room = db.session.get(
         Room,
         room_id
     )
 
     if room is None:
+        abort(404)
 
-        flash(
-            "Room not found.",
-            "danger"
+    if request.method == "POST":
+
+        check_in = request.form.get(
+            "check_in", ""
         )
 
-        return redirect(
-            url_for("user.check_availability")
+        check_out = request.form.get(
+            "check_out", ""
         )
 
-     # GET REQUEST
- 
-    if request.method == "GET":
-
-        check_in_string = request.args.get(
-            "check_in"
+        guests = request.form.get(
+            "guests", ""
         )
 
-        check_out_string = request.args.get(
-            "check_out"
+    else:
+
+        check_in = request.args.get(
+            "check_in", ""
         )
 
-        guests_string = request.args.get(
-            "guests"
+        check_out = request.args.get(
+            "check_out", ""
         )
 
-        hotel_id = request.args.get(
-            "hotel_id"
+        guests = request.args.get(
+            "guests", ""
         )
 
-         # CHECK REQUIRED DATA
- 
-        if not check_in_string or not check_out_string:
-
-            flash(
-                "Please select booking dates first.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("user.check_availability")
-            )
-
-         # CONVERT DATA
- 
-        try:
-
-            check_in = date.fromisoformat(
-                check_in_string
-            )
-
-            check_out = date.fromisoformat(
-                check_out_string
-            )
-
-            guests = int(
-                guests_string
-            )
-
-        except (ValueError, TypeError):
-
-            flash(
-                "Invalid booking information.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("user.check_availability")
-            )
-
-         # VALIDATION
- 
-        if check_in < date.today():
-
-            flash(
-                "Check-in date cannot be in the past.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("user.check_availability")
-            )
-
-        if check_out <= check_in:
-
-            flash(
-                "Check-out date must be after check-in date.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("user.check_availability")
-            )
-
-        if guests < 1:
-
-            flash(
-                "Number of guests must be at least 1.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("user.check_availability")
-            )
-
-         # CHECK ROOM CAPACITY
- 
-        if guests > room.capacity:
-
-            flash(
-                "This room cannot accommodate that many guests.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("user.check_availability")
-            )
-
-         # CHECK ROOM STATUS
- 
-        if room.status != "available":
-
-            flash(
-                "This room is currently unavailable.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("user.check_availability")
-            )
-
-         # CHECK HOTEL
- 
-        if hotel_id:
-
-            if int(hotel_id) != room.hotel_id:
-
-                flash(
-                    "Invalid hotel and room combination.",
-                    "danger"
-                )
-
-                return redirect(
-                    url_for("user.hotels")
-                )
-
-         # CHECK OVERLAPPING BOOKING
- 
-        overlapping_booking = Booking.query.filter(
-
-            Booking.room_id == room.id,
-
-            Booking.status.in_([
-                "confirmed",
-                "checked_in"
-            ]),
-
-            Booking.check_in_date < check_out,
-
-            Booking.check_out_date > check_in
-
-        ).first()
-
-        if overlapping_booking:
-
-            flash(
-                "Sorry, this room is no longer available.",
-                "danger"
-            )
-
-            return redirect(
-                url_for(
-                    "user.check_availability",
-                    hotel_id=room.hotel_id
-                )
-            )
-
-         # SHOW CONFIRMATION PAGE
- 
-        return render_template(
-
-            "user/booking.html",
-
-            room=room,
-
-            check_in=check_in,
-
-            check_out=check_out,
-
-            guests=guests
-
-        )
-
-     # POST REQUEST
- 
-    check_in_string = request.form.get(
-        "check_in"
-    )
-
-    check_out_string = request.form.get(
-        "check_out"
-    )
-
-    guests_string = request.form.get(
-        "guests"
-    )
-
-     # CONVERT DATA
- 
     try:
 
-        check_in = date.fromisoformat(
-            check_in_string
+        check_in_date = date.fromisoformat(
+            check_in
         )
 
-        check_out = date.fromisoformat(
-            check_out_string
+        check_out_date = date.fromisoformat(
+            check_out
         )
 
-        guests = int(
-            guests_string
-        )
+        guest_count = int(guests)
 
     except (ValueError, TypeError):
 
         flash(
-            "Invalid booking information.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("user.check_availability")
-        )
-
-     # VALIDATION
- 
-    if check_in < date.today():
-
-        flash(
-            "Check-in date cannot be in the past.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("user.check_availability")
-        )
-
-    if check_out <= check_in:
-
-        flash(
-            "Check-out date must be after check-in date.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("user.check_availability")
-        )
-
-    if guests < 1:
-
-        flash(
-            "Number of guests must be at least 1.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("user.check_availability")
-        )
-
-     # CHECK CAPACITY
- 
-    if guests > room.capacity:
-
-        flash(
-            "Room capacity exceeded.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("user.check_availability")
-        )
-
-     # CHECK ROOM STATUS
- 
-    if room.status != "available":
-
-        flash(
-            "Room is currently unavailable.",
+            "Invalid booking details. Please search again.",
             "danger"
         )
 
@@ -847,27 +527,51 @@ def book_room(room_id):
             )
         )
 
-     # FINAL DOUBLE-BOOKING CHECK
- 
-    overlapping_booking = Booking.query.filter(
+    if (
+        check_in_date < date.today()
+        or check_out_date <= check_in_date
+        or guest_count < 1
+        or guest_count > room.capacity
+    ):
 
+        flash(
+            "Invalid dates or guest count for this room.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "user.check_availability",
+                hotel_id=room.hotel_id
+            )
+        )
+
+    if room.status != "available":
+
+        flash(
+            "This room is currently unavailable.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("user.check_availability")
+        )
+
+    # Recheck overlapping bookings before confirmation.
+    conflict = Booking.query.filter(
         Booking.room_id == room.id,
-
         Booking.status.in_([
             "confirmed",
             "checked_in"
         ]),
-
-        Booking.check_in_date < check_out,
-
-        Booking.check_out_date > check_in
-
+        Booking.check_in_date < check_out_date,
+        Booking.check_out_date > check_in_date
     ).first()
 
-    if overlapping_booking:
+    if conflict:
 
         flash(
-            "Sorry, this room has already been booked.",
+            "This room has already been booked for those dates.",
             "danger"
         )
 
@@ -878,32 +582,45 @@ def book_room(room_id):
             )
         )
 
-     # CREATE BOOKING
- 
+    if request.method == "GET":
+
+        return render_template(
+            "user/booking.html",
+            room=room,
+            check_in=check_in,
+            check_out=check_out,
+            guests=guest_count
+        )
+
     booking = Booking(
-
         user_id=current_user.id,
-
         room_id=room.id,
-
-        check_in_date=check_in,
-
-        check_out_date=check_out,
-
-        guests=guests,
-
+        check_in_date=check_in_date,
+        check_out_date=check_out_date,
+        guests=guest_count,
         status="confirmed"
-
     )
 
-    db.session.add(
-        booking
-    )
+    try:
 
-    db.session.commit()
+        db.session.add(booking)
+        db.session.commit()
+
+    except Exception:
+
+        db.session.rollback()
+
+        flash(
+            "Booking failed. Please try again.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("user.check_availability")
+        )
 
     flash(
-        "Room booked successfully!",
+        "Room booked successfully.",
         "success"
     )
 
@@ -912,63 +629,48 @@ def book_room(room_id):
     )
 
 
- # BOOKING HISTORY
- 
+# =====================================================
+# BOOKING HISTORY
+# =====================================================
+
 @user_bp.route("/bookings")
-@login_required
+@user_required
 def booking_history():
 
     bookings = Booking.query.filter_by(
-
         user_id=current_user.id
-
     ).order_by(
-
         Booking.created_at.desc()
-
     ).all()
 
     return render_template(
-
         "user/bookings.html",
-
         bookings=bookings
-
     )
 
 
- # CANCEL BOOKING
- 
+# =====================================================
+# CANCEL BOOKING
+# =====================================================
+
 @user_bp.route(
     "/booking/<int:booking_id>/cancel",
     methods=["POST"]
 )
-@login_required
+@user_required
 def cancel_booking(booking_id):
 
-     # FIND USER'S BOOKING
- 
-    booking = Booking.query.filter_by(
-
-        id=booking_id,
-
-        user_id=current_user.id
-
-    ).first()
+    booking = db.session.get(
+        Booking,
+        booking_id
+    )
 
     if booking is None:
+        abort(404)
 
-        flash(
-            "Booking not found.",
-            "danger"
-        )
+    if booking.user_id != current_user.id:
+        abort(403)
 
-        return redirect(
-            url_for("user.booking_history")
-        )
-
-     # CHECK BOOKING STATUS
- 
     if booking.status != "confirmed":
 
         flash(
@@ -980,11 +682,24 @@ def cancel_booking(booking_id):
             url_for("user.booking_history")
         )
 
-     # CANCEL BOOKING
- 
     booking.status = "cancelled"
 
-    db.session.commit()
+    try:
+
+        db.session.commit()
+
+    except Exception:
+
+        db.session.rollback()
+
+        flash(
+            "Unable to cancel booking.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("user.booking_history")
+        )
 
     flash(
         "Booking cancelled successfully.",
@@ -996,14 +711,55 @@ def cancel_booking(booking_id):
     )
 
 
- # USER LOGOUT
- 
-@user_bp.route("/logout")
-@login_required
-def logout():
+# =====================================================
+# CUSTOMER BILL VIEW
+# =====================================================
 
-    logout_user()
+@user_bp.route(
+    "/booking/<int:booking_id>/bill"
+)
+@user_required
+def view_bill(booking_id):
 
-    flash( "You have been logged out.","success")
+    booking = db.session.get(
+        Booking,
+        booking_id
+    )
 
-    return redirect(url_for("user.login"))
+    if booking is None:
+        abort(404)
+
+    if booking.user_id != current_user.id:
+        abort(403)
+
+    bill = Bill.query.filter_by(
+        booking_id=booking.id
+    ).first()
+
+    if bill is None:
+
+        flash(
+            "Bill has not been generated yet.",
+            "info"
+        )
+
+        return redirect(
+            url_for("user.booking_history")
+        )
+
+    payment = Payment.query.filter_by(
+        booking_id=booking.id
+    ).first()
+
+    nights = (
+        booking.check_out_date
+        - booking.check_in_date
+    ).days
+
+    return render_template(
+        "user/bill.html",
+        booking=booking,
+        bill=bill,
+        payment=payment,
+        nights=nights
+    )
