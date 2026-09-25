@@ -39,10 +39,8 @@ staff_bp = Blueprint(
 )
 
 
-# =====================================================
-# STAFF LOGIN
-# =====================================================
-
+ # STAFF LOGIN
+ 
 @staff_bp.route(
     "/login",
     methods=["GET", "POST"]
@@ -92,10 +90,8 @@ def login():
     )
 
 
-# =====================================================
-# STAFF DASHBOARD
-# =====================================================
-
+ # STAFF DASHBOARD
+ 
 @staff_bp.route("/dashboard")
 @staff_required
 def dashboard():
@@ -138,10 +134,8 @@ def dashboard():
     )
 
 
-# =====================================================
-# VIEW ALL BOOKINGS
-# =====================================================
-
+ # VIEW ALL BOOKINGS
+ 
 @staff_bp.route("/bookings")
 @staff_required
 def bookings():
@@ -156,10 +150,8 @@ def bookings():
     )
 
 
-# =====================================================
-# STAFF CHECK-IN
-# =====================================================
-
+ # STAFF CHECK-IN
+ 
 @staff_bp.route(
     "/checkin",
     methods=["GET", "POST"]
@@ -283,10 +275,8 @@ def checkin():
     )
 
 
-# =====================================================
-# STAFF CHECK-OUT
-# =====================================================
-
+ # STAFF CHECK-OUT
+ 
 @staff_bp.route(
     "/checkout",
     methods=["GET", "POST"]
@@ -453,10 +443,8 @@ def checkout():
     )
 
 
-# =====================================================
-# STAFF VIEW BILL
-# =====================================================
-
+ # STAFF VIEW BILL
+ 
 @staff_bp.route(
     "/bill/<int:booking_id>"
 )
@@ -504,10 +492,8 @@ def view_bill(booking_id):
     )
 
 
-# =====================================================
-# PROCESS PAYMENT
-# =====================================================
-
+ # PROCESS PAYMENT
+ 
 @staff_bp.route(
     "/payment/<int:booking_id>",
     methods=["POST"]
@@ -639,9 +625,8 @@ def process_payment(booking_id):
     )
 
 
-# =====================================================
-# STAFF LOGOUT
-# =====================================================
+ # STAFF LOGOUT
+
 
 @staff_bp.route("/logout")
 @staff_required

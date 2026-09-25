@@ -88,6 +88,8 @@ class Staff(UserMixin, db.Model):
     def get_id(self):
         return f"staff:{self.id}"
 
+    
+
 
  # HOTEL MODEL
  
